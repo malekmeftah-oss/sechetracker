@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CUT TRACKER</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --card: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #e8ff47;
+    --accent2: #ff4757;
+    --accent3: #2ed573;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+    --warn: #ffa502;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  /* NAV */
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 8px; cursor: pointer; border: none; background: none; color: var(--muted); font-size: 9px; font-family: 'DM Sans', sans-serif; font-weight: 500; letter-spacing: .5px; text-transform: uppercase; transition: color .2s; }
+  .nav-btn.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; }
+
+  /* PAGES */
+  .page { display: none; padding: 20px 16px 90px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* HEADER */
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; line-height: 1; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  .stat-unit { font-size: 14px; color: var(--muted); }
+
+  /* PROGRESS BAR */
+  .prog-bar-wrap { margin-bottom: 14px; }
+  .prog-bar-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+  .prog-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .prog-bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+
+  /* MACROS RING */
+  .macros-row { display: flex; gap: 10px; align-items: center; }
+  .macro-item { flex: 1; text-align: center; }
+  .macro-num { font-family: 'Bebas Neue', sans-serif; font-size: 28px; }
+  .macro-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .macro-prot { color: var(--accent); }
+  .macro-gluc { color: var(--accent3); }
+  .macro-lip { color: var(--warn); }
+  .macro-fib { color: #70a1ff; }
+
+  /* INPUTS */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; display: block; font-weight: 600; }
+  .form-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 16px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color .2s; }
+  .form-input:focus { border-color: var(--accent); }
+  select.form-input { appearance: none; cursor: pointer; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* BUTTONS */
+  .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; cursor: pointer; transition: transform .1s, opacity .2s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #0a0a0f; }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: var(--accent2); color: #fff; }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(46,213,115,.15); color: var(--accent3); }
+  .badge-red { background: rgba(255,71,87,.15); color: var(--accent2); }
+  .badge-yellow { background: rgba(232,255,71,.15); color: var(--accent); }
+  .badge-blue { background: rgba(112,161,255,.15); color: #70a1ff; }
+
+  /* CYCLE INDICATOR */
+  .cycle-dots { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .cycle-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--border); color: var(--muted); }
+  .cycle-dot.done { background: rgba(46,213,115,.2); color: var(--accent3); }
+  .cycle-dot.current { background: var(--accent); color: #0a0a0f; }
+
+  /* MUSCU TABLE */
+  .exercise-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .exercise-name { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .exercise-group { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .exercise-details { display: flex; gap: 16px; }
+  .ex-detail { text-align: center; }
+  .ex-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); }
+  .ex-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+
+  /* ONBOARDING */
+  .onboard-wrap { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 30px 20px; max-width: 480px; margin: 0 auto; }
+  .onboard-logo { font-family: 'Bebas Neue', sans-serif; font-size: 56px; letter-spacing: 4px; color: var(--accent); margin-bottom: 8px; }
+  .onboard-tagline { color: var(--muted); font-size: 14px; margin-bottom: 36px; }
+  .step-indicator { display: flex; gap: 6px; margin-bottom: 28px; }
+  .step-dot { flex: 1; height: 3px; border-radius: 99px; background: var(--border); }
+  .step-dot.done { background: var(--accent3); }
+  .step-dot.active { background: var(--accent); }
+
+  /* DAILY LOG ITEMS */
+  .log-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .log-date { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1px; }
+  .kcal-circle { width: 90px; height: 90px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid var(--accent); margin: 0 auto 16px; }
+  .kcal-num { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--accent); line-height: 1; }
+  .kcal-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+
+  /* WEIGHT HISTORY */
+  .weight-entry { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .weight-entry:last-child { border-bottom: none; }
+  .weight-date { font-size: 13px; color: var(--muted); }
+  .weight-val { font-family: 'Bebas Neue', sans-serif; font-size: 24px; }
+  .weight-delta { font-size: 12px; }
+
+  /* RATIO BAR */
+  .ratio-bar { height: 12px; border-radius: 99px; background: var(--border); overflow: hidden; position: relative; margin-top: 6px; }
+  .ratio-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--accent2), var(--accent3)); border-radius: 99px; transition: width .5s; }
+  .ratio-marker { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); opacity: .5; }
+
+  /* SCROLL FIX */
+  ::-webkit-scrollbar { width: 0; }
+
+  /* TOAST */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--accent3); color: #0a0a0f; padding: 12px 24px; border-radius: 99px; font-weight: 600; font-size: 14px; z-index: 999; transition: transform .3s; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* TYPE SELECTOR */
+  .type-selector { display: flex; gap: 8px; }
+  .type-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: all .2s; }
+  .type-btn.active { background: rgba(232,255,71,.1); border-color: var(--accent); color: var(--accent); }
+
+  .big-number { font-family: 'Bebas Neue', sans-serif; font-size: 48px; letter-spacing: 2px; }
+  .chart-wrap { height: 180px; }
+
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+  .info-label { color: var(--muted); font-size: 13px; }
+  .info-val { font-weight: 600; font-size: 14px; }
+
+  .seance-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .seance-tab { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; cursor: pointer; text-align: center; transition: all .2s; }
+  .seance-tab.active { background: rgba(232,255,71,.1); border-color: var(--accent); color: var(--accent); }
+
+  /* Lexique table */
+  .lexique-table { width: 100%; border-collapse: collapse; }
+  .lexique-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .lexique-table td { padding: 10px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .lexique-table td:first-child { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--accent); padding-right: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING -->
+<div id="onboardScreen">
+  <div class="onboard-wrap">
+    <div id="stepIndicator" class="step-indicator"></div>
+    <div id="stepContent"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen" style="display:none">
+  <!-- Pages -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div class="page-title" id="dashGreeting">DASHBOARD</div>
+      <div class="page-sub" id="dashDate"></div>
+    </div>
+    <div id="dashContent"></div>
+  </div>
+
+  <div id="page-nutrition" class="page">
+    <div class="page-header">
+      <div class="page-title">NUTRITION</div>
+      <div class="page-sub" id="nutDate"></div>
+    </div>
+    <div id="nutContent"></div>
+  </div>
+
+  <div id="page-poids" class="page">
+    <div class="page-header">
+      <div class="page-title">POIDS</div>
+      <div class="page-sub">Suivi corporel</div>
+    </div>
+    <div id="poidsContent"></div>
+  </div>
+
+  <div id="page-muscu" class="page">
+    <div class="page-header">
+      <div class="page-title">MUSCU</div>
+      <div class="page-sub" id="muscuSub"></div>
+    </div>
+    <div id="muscuContent"></div>
+  </div>
+
+  <div id="page-params" class="page">
+    <div class="page-header">
+      <div class="page-title">PARAMÈTRES</div>
+      <div class="page-sub">Profil & objectifs</div>
+    </div>
+    <div id="paramsContent"></div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="goPage('dashboard',this)">
+      <span class="nav-icon">⚡</span>Dashboard
+    </button>
+    <button class="nav-btn" onclick="goPage('nutrition',this)">
+      <span class="nav-icon">🥗</span>Nutrition
+    </button>
+    <button class="nav-btn" onclick="goPage('poids',this)">
+      <span class="nav-icon">⚖️</span>Poids
+    </button>
+    <button class="nav-btn" onclick="goPage('muscu',this)">
+      <span class="nav-icon">💪</span>Muscu
+    </button>
+    <button class="nav-btn" onclick="goPage('params',this)">
+      <span class="nav-icon">⚙️</span>Profil
+    </button>
+  </nav>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ============================================================
+// DATA & STATE
+// ============================================================
+let db = {};
+let currentNutDate = todayStr();
+let currentMuscu = 'A';
+let weightChart = null, nutChart = null;
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+function loadDB() {
+  try { db = JSON.parse(localStorage.getItem('cuttracker') || '{}'); } catch(e) { db = {}; }
+  if (!db.logs) db.logs = {};
+  if (!db.weights) db.weights = [];
+  if (!db.exerciseLogs) db.exerciseLogs = {};
+}
+function saveDB() {
+  localStorage.setItem('cuttracker', JSON.stringify(db));
+}
+
+// ============================================================
+// CALCULATIONS
+// ============================================================
+function calcTDEE(p) {
+  // Mifflin-St Jeor
+  let bmr;
+  if (p.sexe === 'M') bmr = 10 * p.poids + 6.25 * (p.taille * 100) - 5 * p.age + 5;
+  else bmr = 10 * p.poids + 6.25 * (p.taille * 100) - 5 * p.age - 161;
+  const act = { sedentaire: 1.2, leger: 1.375, modere: 1.55, actif: 1.725, treactif: 1.9 };
+  return Math.round(bmr * (act[p.activite] || 1.375));
+}
+function calcTargetKcal(p) {
+  const tdee = calcTDEE(p);
+  const deficit = p.deficit || 500;
+  return Math.max(1200, tdee - deficit);
+}
+function calcMacros(p) {
+  const kcal = calcTargetKcal(p);
+  const prot = p.prot || Math.round(p.poids * 2.2);
+  const lip = p.lip || Math.round(p.poids * 0.8);
+  const protKcal = prot * 4, lipKcal = lip * 9;
+  const gluc = Math.max(50, Math.round((kcal - protKcal - lipKcal) / 4));
+  return { kcal, prot, gluc, lip, fib: 25 };
+}
+function getDaysSinceStart(p) {
+  if (!p.dateDebut) return 0;
+  const start = new Date(p.dateDebut);
+  const today = new Date();
+  return Math.max(0, Math.floor((today - start) / 86400000));
+}
+function getCurrentCycle(p) {
+  const days = getDaysSinceStart(p);
+  return Math.floor(days / 7) + 1;
+}
+function getRatioLabel(ratio) {
+  if (ratio < 1.2) return { label: 'Excès de gras', color: 'var(--accent2)' };
+  if (ratio < 1.4) return { label: 'Normal (soft)', color: 'var(--warn)' };
+  if (ratio < 1.6) return { label: 'Sportif occasionnel', color: 'var(--warn)' };
+  if (ratio < 1.8) return { label: 'Athlétique', color: 'var(--accent3)' };
+  if (ratio < 2.2) return { label: 'Sec & tracé', color: 'var(--accent3)' };
+  return { label: 'Cover / Compétiteur', color: 'var(--accent)' };
+}
+function calcBMI(p, poids) {
+  return poids / (p.taille * p.taille);
+}
+
+// ============================================================
+// ONBOARDING
+// ============================================================
+const steps = [
+  {
+    title: 'Ton profil',
+    fields: [
+      { id: 'nom', label: 'Prénom', type: 'text', placeholder: 'Ex: Malek' },
+      { id: 'sexe', label: 'Sexe', type: 'select', options: [['M','Homme'],['F','Femme']] },
+      { id: 'age', label: 'Âge', type: 'number', placeholder: '30' },
+      { id: 'taille', label: 'Taille (m)', type: 'number', placeholder: '1.75', step: '0.01' },
+    ]
+  },
+  {
+    title: 'Ton poids',
+    fields: [
+      { id: 'poids', label: 'Poids actuel (kg)', type: 'number', placeholder: '80', step: '0.1' },
+      { id: 'poidsObj', label: 'Objectif poids (kg)', type: 'number', placeholder: '72', step: '0.1' },
+      { id: 'activite', label: "Niveau d'activité", type: 'select', options: [
+        ['sedentaire','Sédentaire (bureau, peu de sport)'],
+        ['leger','Léger (1-3x/sem)'],
+        ['modere','Modéré (3-5x/sem) ✓'],
+        ['actif','Actif (6-7x/sem)'],
+        ['treactif','Très actif (2x/jour)'],
+      ]},
+    ]
+  },
+  {
+    title: 'Tes dates',
+    fields: [
+      { id: 'dateDebut', label: 'Date de début', type: 'date' },
+      { id: 'dateObj', label: 'Date objectif', type: 'date' },
+    ]
+  },
+  {
+    title: 'Nutrition cible',
+    subtitle: "On calcule automatiquement tes besoins. Tu peux ajuster.",
+    fields: [
+      { id: 'deficit', label: 'Déficit calorique/jour (kcal)', type: 'number', placeholder: '500', help: 'Recommandé : 300-600 kcal' },
+      { id: 'prot', label: 'Protéines/jour (g)', type: 'number', placeholder: 'Auto', help: 'Laisse vide = auto (2.2g/kg)' },
+      { id: 'lip', label: 'Lipides/jour (g)', type: 'number', placeholder: 'Auto', help: 'Laisse vide = auto (0.8g/kg)' },
+    ]
+  }
+];
+let onboardStep = 0;
+let onboardData = {};
+
+function renderOnboard() {
+  const ind = document.getElementById('stepIndicator');
+  ind.innerHTML = steps.map((s,i) => `<div class="step-dot ${i<onboardStep?'done':i===onboardStep?'active':''}"></div>`).join('');
+  
+  const step = steps[onboardStep];
+  let html = `<div class="onboard-logo">CUT<br>TRACKER</div>`;
+  if (onboardStep === 0) html += `<div class="onboard-tagline">Ton programme sèche, optimisé au quotidien.</div>`;
+  html += `<div style="margin-bottom:24px"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--accent);margin-bottom:4px">${step.title}</div>`;
+  if (step.subtitle) html += `<div style="color:var(--muted);font-size:13px">${step.subtitle}</div>`;
+  html += `</div>`;
+
+  // Auto-fill from TDEE if step 3
+  if (onboardStep === 3 && onboardData.poids && !onboardData.deficit) {
+    onboardData.deficit = 500;
+    const mockProfile = { ...onboardData, taille: parseFloat(onboardData.taille), poids: parseFloat(onboardData.poids), age: parseInt(onboardData.age) };
+    const tdee = calcTDEE(mockProfile);
+    const targetKcal = tdee - 500;
+    const protAuto = Math.round(parseFloat(onboardData.poids) * 2.2);
+    const lipAuto = Math.round(parseFloat(onboardData.poids) * 0.8);
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-title">Calcul automatique</div>
+      <div class="info-row"><span class="info-label">TDEE estimé</span><span class="info-val">${tdee} kcal</span></div>
+      <div class="info-row"><span class="info-label">Cible avec déficit 500</span><span class="info-val" style="color:var(--accent)">${targetKcal} kcal</span></div>
+      <div class="info-row"><span class="info-label">Protéines auto</span><span class="info-val">${protAuto}g</span></div>
+    </div>`;
+  }
+
+  step.fields.forEach(f => {
+    html += `<div class="form-group"><label class="form-label">${f.label}</label>`;
+    if (f.type === 'select') {
+      html += `<select class="form-input" id="ob_${f.id}" onchange="onboardData['${f.id}']=this.value">`;
+      f.options.forEach(([v,l]) => html += `<option value="${v}" ${onboardData[f.id]===v?'selected':''}>${l}</option>`);
+      html += `</select>`;
+    } else {
+      html += `<input class="form-input" type="${f.type}" id="ob_${f.id}" placeholder="${f.placeholder||''}" ${f.step?`step="${f.step}"`:''}
+        value="${onboardData[f.id]||''}" oninput="onboardData['${f.id}']=this.value">`;
+    }
+    if (f.help) html += `<div style="font-size:11px;color:var(--muted);margin-top:5px">${f.help}</div>`;
+    html += `</div>`;
+  });
+
+  const isLast = onboardStep === steps.length - 1;
+  html += `<button class="btn btn-primary" style="margin-top:8px" onclick="nextStep()">${isLast ? 'COMMENCER ✓' : 'SUIVANT →'}</button>`;
+  if (onboardStep > 0) html += `<button class="btn btn-secondary" style="margin-top:10px" onclick="prevStep()">RETOUR</button>`;
+
+  document.getElementById('stepContent').innerHTML = html;
+
+  // Set default values for selects
+  step.fields.forEach(f => {
+    if (f.type === 'select' && !onboardData[f.id]) {
+      onboardData[f.id] = f.options[0][0];
+    }
+  });
+  if (onboardData.sexe) document.getElementById('ob_sexe') && (document.getElementById('ob_sexe').value = onboardData.sexe);
+  if (onboardData.activite) document.getElementById('ob_activite') && (document.getElementById('ob_activite').value = onboardData.activite);
+}
+
+function nextStep() {
+  // Validate required fields
+  const step = steps[onboardStep];
+  for (const f of step.fields) {
+    const required = ['nom','age','taille','poids','poidsObj','dateDebut','dateObj'];
+    if (required.includes(f.id) && !onboardData[f.id]) {
+      showToast('⚠️ Remplis tous les champs');
+      return;
+    }
+  }
+  if (onboardStep < steps.length - 1) {
+    onboardStep++;
+    renderOnboard();
+  } else {
+    finishOnboard();
+  }
+}
+function prevStep() { onboardStep--; renderOnboard(); }
+
+function finishOnboard() {
+  // Parse & save profile
+  db.profile = {
+    nom: onboardData.nom,
+    sexe: onboardData.sexe || 'M',
+    age: parseInt(onboardData.age),
+    taille: parseFloat(onboardData.taille),
+    poids: parseFloat(onboardData.poids),
+    poidsObj: parseFloat(onboardData.poidsObj),
+    activite: onboardData.activite || 'modere',
+    dateDebut: onboardData.dateDebut,
+    dateObj: onboardData.dateObj,
+    deficit: parseInt(onboardData.deficit) || 500,
+    prot: onboardData.prot ? parseInt(onboardData.prot) : null,
+    lip: onboardData.lip ? parseInt(onboardData.lip) : null,
+  };
+  // Add starting weight
+  db.weights.push({
+    date: onboardData.dateDebut || todayStr(),
+    poids: db.profile.poids,
+    mg: null, gv: null, mm: null
+  });
+  saveDB();
+  startApp();
+}
+
+// ============================================================
+// APP INIT
+// ============================================================
+function startApp() {
+  document.getElementById('onboardScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  renderDashboard();
+  renderNutrition();
+  renderPoids();
+  renderMuscu();
+  renderParams();
+}
+
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'nutrition') renderNutrition();
+  if (name === 'poids') renderPoids();
+  if (name === 'muscu') renderMuscu();
+  if (name === 'params') renderParams();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const p = db.profile;
+  if (!p) return;
+  const macros = calcMacros(p);
+  const days = getDaysSinceStart(p);
+  const cycle = getCurrentCycle(p);
+  const totalDays = p.dateObj ? Math.max(1, Math.floor((new Date(p.dateObj) - new Date(p.dateDebut)) / 86400000)) : 56;
+  const pctTime = Math.min(100, Math.round(days / totalDays * 100));
+
+  // Get today's log
+  const todayLog = db.logs[todayStr()] || {};
+  const todayKcal = todayLog.kcal || 0;
+  const deficitToday = macros.kcal - todayKcal;
+
+  // Latest weight
+  const latestW = db.weights.length ? db.weights[db.weights.length - 1] : null;
+  const startW = db.weights.length ? db.weights[0].poids : p.poids;
+  const perte = latestW ? parseFloat((startW - latestW.poids).toFixed(1)) : 0;
+  const poidsLeft = latestW ? parseFloat((latestW.poids - p.poidsObj).toFixed(1)) : (p.poids - p.poidsObj);
+
+  // Cumul deficit
+  let cumulDeficit = 0;
+  const sortedLogs = Object.entries(db.logs).sort(([a],[b])=>a.localeCompare(b));
+  sortedLogs.forEach(([date, log]) => {
+    if (log.kcal) cumulDeficit += macros.kcal - log.kcal;
+  });
+  const grasPerdTheo = (cumulDeficit / 7700).toFixed(2);
+
+  document.getElementById('dashGreeting').textContent = `SALUT ${(p.nom||'').toUpperCase()} 👋`;
+  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+
+  let html = '';
+
+  // Main stats
+  html += `<div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-label">Cycle actuel</div>
+      <div class="stat-val">${cycle}<span class="stat-unit"> / ${Math.ceil(totalDays/7)}</span></div>
+      <div style="margin-top:4px"><span class="badge badge-yellow">Semaine ${cycle}</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Poids actuel</div>
+      <div class="stat-val">${latestW ? latestW.poids : p.poids}<span class="stat-unit"> kg</span></div>
+      ${perte > 0 ? `<div style="margin-top:4px"><span class="badge badge-green">−${perte} kg</span></div>` : '<div style="margin-top:4px"><span class="badge badge-blue">Départ</span></div>'}
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Reste à perdre</div>
+      <div class="stat-val" style="color:${poidsLeft>0?'var(--warn)':'var(--accent3)'}">${Math.max(0,poidsLeft)}<span class="stat-unit"> kg</span></div>
+      <div style="margin-top:4px"><span class="badge badge-${poidsLeft<=0?'green':'red'}">Obj: ${p.poidsObj} kg</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Gras perdu (théo)</div>
+      <div class="stat-val">${grasPerdTheo}<span class="stat-unit"> kg</span></div>
+      <div style="margin-top:4px"><span class="badge badge-green">Déficit cumulé</span></div>
+    </div>
+  </div>`;
+
+  // Time progress
+  html += `<div class="card">
+    <div class="card-title">Progression temporelle</div>
+    <div class="prog-bar-wrap">
+      <div class="prog-bar-header"><span>Début</span><span>${pctTime}% — J${days}</span><span>Objectif</span></div>
+      <div class="prog-bar"><div class="prog-bar-fill" style="width:${pctTime}%;background:var(--accent)"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px">
+      <span>${p.dateDebut}</span><span>${p.dateObj}</span>
+    </div>
+  </div>`;
+
+  // Today nutrition
+  const nutPct = macros.kcal > 0 ? Math.min(100, Math.round(todayKcal / macros.kcal * 100)) : 0;
+  const nutColor = nutPct > 110 ? 'var(--accent2)' : nutPct > 90 ? 'var(--warn)' : 'var(--accent3)';
+  html += `<div class="card">
+    <div class="card-title">Aujourd'hui — Nutrition</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:${nutColor}">${todayKcal} <span style="font-size:18px;color:var(--muted)">/ ${macros.kcal} kcal</span></div>
+        <div style="font-size:13px;color:var(--muted)">Déficit : <b style="color:${deficitToday>=0?'var(--accent3)':'var(--accent2)'}">${deficitToday >= 0 ? '+' : ''}${deficitToday} kcal</b></div>
+      </div>
+      <button class="btn" style="width:auto;padding:10px 16px;background:var(--accent);color:#0a0a0f;font-size:16px;border-radius:12px" onclick="goPageByName('nutrition')">+ Saisir</button>
+    </div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width:${nutPct}%;background:${nutColor}"></div></div>
+    ${todayLog.prot ? `<div class="macros-row" style="margin-top:12px">
+      <div class="macro-item"><div class="macro-num macro-prot">${todayLog.prot||0}</div><div class="macro-label">Prot</div></div>
+      <div class="macro-item"><div class="macro-num macro-gluc">${todayLog.gluc||0}</div><div class="macro-label">Gluc</div></div>
+      <div class="macro-item"><div class="macro-num macro-lip">${todayLog.lip||0}</div><div class="macro-label">Lip</div></div>
+      <div class="macro-item"><div class="macro-num macro-fib">${todayLog.fib||0}</div><div class="macro-label">Fib</div></div>
+    </div>` : ''}
+  </div>`;
+
+  // Cycles overview
+  const totalCycles = Math.ceil(totalDays / 7);
+  let cycleHtml = '<div class="cycle-dots">';
+  for (let i = 1; i <= Math.min(totalCycles, 12); i++) {
+    const cls = i < cycle ? 'done' : i === cycle ? 'current' : '';
+    cycleHtml += `<div class="cycle-dot ${cls}">${i}</div>`;
+  }
+  cycleHtml += '</div>';
+  html += `<div class="card"><div class="card-title">Cycles</div>${cycleHtml}</div>`;
+
+  // TDEE info
+  const tdee = calcTDEE(p);
+  html += `<div class="card">
+    <div class="card-title">Tes besoins caloriques</div>
+    <div class="info-row"><span class="info-label">TDEE (maintenance)</span><span class="info-val">${tdee} kcal</span></div>
+    <div class="info-row"><span class="info-label">Déficit défini</span><span class="info-val">−${p.deficit} kcal</span></div>
+    <div class="info-row"><span class="info-label">Cible journalière</span><span class="info-val" style="color:var(--accent)">${macros.kcal} kcal</span></div>
+    <div class="divider"></div>
+    <div class="macros-row">
+      <div class="macro-item"><div class="macro-num macro-prot">${macros.prot}g</div><div class="macro-label">Protéines</div></div>
+      <div class="macro-item"><div class="macro-num macro-gluc">${macros.gluc}g</div><div class="macro-label">Glucides</div></div>
+      <div class="macro-item"><div class="macro-num macro-lip">${macros.lip}g</div><div class="macro-label">Lipides</div></div>
+      <div class="macro-item"><div class="macro-num macro-fib">${macros.fib}g</div><div class="macro-label">Fibres</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('dashContent').innerHTML = html;
+}
+
+function goPageByName(name) {
+  const btn = document.querySelector(`.nav-btn[onclick*="${name}"]`);
+  if (btn) goPage(name, btn);
+}
+
+// ============================================================
+// NUTRITION
+// ============================================================
+function renderNutrition() {
+  const p = db.profile;
+  if (!p) return;
+  const macros = calcMacros(p);
+  const log = db.logs[currentNutDate] || {};
+
+  const d = new Date(currentNutDate + 'T12:00:00');
+  document.getElementById('nutDate').textContent = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+
+  const todayKcal = log.kcal || 0;
+  const nutPct = Math.min(100, Math.round(todayKcal / macros.kcal * 100));
+  const nutColor = nutPct > 110 ? 'var(--accent2)' : nutPct > 90 ? 'var(--warn)' : 'var(--accent3)';
+
+  let html = '';
+
+  // Date nav
+  html += `<div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:14px;font-family:'DM Sans',sans-serif" onclick="changeNutDate(-1)">← Hier</button>
+    <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:14px;font-family:'DM Sans',sans-serif" onclick="changeNutDate(1)">Demain →</button>
+  </div>`;
+
+  // Kcal display
+  html += `<div class="card" style="text-align:center">
+    <div class="card-title">Calories du jour</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:${nutColor};line-height:1">${todayKcal}</div>
+    <div style="color:var(--muted);font-size:14px;margin-bottom:12px">/ ${macros.kcal} kcal cible</div>
+    <div class="prog-bar" style="height:10px"><div class="prog-bar-fill" style="width:${nutPct}%;background:${nutColor}"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
+      <span>0</span><span>${nutPct}%</span><span>${macros.kcal}</span>
+    </div>
+  </div>`;
+
+  // Macros
+  const protPct = Math.min(100, Math.round((log.prot||0) / macros.prot * 100));
+  const glucPct = Math.min(100, Math.round((log.gluc||0) / macros.gluc * 100));
+  const lipPct = Math.min(100, Math.round((log.lip||0) / macros.lip * 100));
+  const fibPct = Math.min(100, Math.round((log.fib||0) / macros.fib * 100));
+
+  html += `<div class="card">
+    <div class="card-title">Macros</div>
+    ${[
+      ['Protéines', log.prot||0, macros.prot, protPct, 'var(--accent)', 'g'],
+      ['Glucides', log.gluc||0, macros.gluc, glucPct, 'var(--accent3)', 'g'],
+      ['Lipides', log.lip||0, macros.lip, lipPct, 'var(--warn)', 'g'],
+      ['Fibres', log.fib||0, macros.fib, fibPct, '#70a1ff', 'g'],
+    ].map(([name, val, target, pct, color, unit]) => `
+      <div class="prog-bar-wrap">
+        <div class="prog-bar-header">
+          <span>${name}</span>
+          <span style="color:${color}">${val}${unit} <span style="color:var(--muted)">/ ${target}${unit}</span></span>
+        </div>
+        <div class="prog-bar"><div class="prog-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+    `).join('')}
+  </div>`;
+
+  // Form
+  html += `<div class="card">
+    <div class="card-title">Saisir mes apports</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Calories (kcal)</label>
+        <input class="form-input" type="number" id="in_kcal" value="${log.kcal||''}" placeholder="${macros.kcal}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Protéines (g)</label>
+        <input class="form-input" type="number" id="in_prot" value="${log.prot||''}" placeholder="${macros.prot}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Glucides (g)</label>
+        <input class="form-input" type="number" id="in_gluc" value="${log.gluc||''}" placeholder="${macros.gluc}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lipides (g)</label>
+        <input class="form-input" type="number" id="in_lip" value="${log.lip||''}" placeholder="${macros.lip}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fibres (g)</label>
+      <input class="form-input" type="number" id="in_fib" value="${log.fib||''}" placeholder="25">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type de journée</label>
+      <div class="type-selector">
+        ${['OFF','MUSC','CARDIO'].map(t => `<div class="type-btn ${(log.type||'OFF')===t?'active':''}" onclick="selectType('${t}',this)">${t}</div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (optionnel)</label>
+      <input class="form-input" type="text" id="in_note" value="${log.note||''}" placeholder="Triche, restos, …">
+    </div>
+    <button class="btn btn-primary" onclick="saveNut()">ENREGISTRER ✓</button>
+  </div>`;
+
+  // Tip
+  const deficit = macros.kcal - (log.kcal||0);
+  if (log.kcal) {
+    const msg = deficit > 0 ? `✅ Déficit de ${deficit} kcal sur cette journée. Bien joué !`
+      : deficit === 0 ? `⚖️ À l'équilibre aujourd'hui.`
+      : `⚠️ Surplus de ${Math.abs(deficit)} kcal. Essaie de compenser demain.`;
+    html += `<div class="card" style="border-color:${deficit>=0?'var(--accent3)':'var(--accent2)'}"><div style="font-size:14px">${msg}</div></div>`;
+  }
+
+  document.getElementById('nutContent').innerHTML = html;
+}
+
+let selectedType = 'OFF';
+function selectType(t, el) {
+  selectedType = t;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function changeNutDate(dir) {
+  const d = new Date(currentNutDate + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  currentNutDate = d.toISOString().split('T')[0];
+  selectedType = db.logs[currentNutDate]?.type || 'OFF';
+  renderNutrition();
+}
+
+function saveNut() {
+  const kcal = parseInt(document.getElementById('in_kcal').value) || 0;
+  const prot = parseInt(document.getElementById('in_prot').value) || 0;
+  const gluc = parseInt(document.getElementById('in_gluc').value) || 0;
+  const lip = parseInt(document.getElementById('in_lip').value) || 0;
+  const fib = parseInt(document.getElementById('in_fib').value) || 0;
+  const note = document.getElementById('in_note').value;
+  db.logs[currentNutDate] = { kcal, prot, gluc, lip, fib, type: selectedType, note };
+  saveDB();
+  showToast('✓ Journée enregistrée');
+  renderNutrition();
+  renderDashboard();
+}
+
+// ============================================================
+// POIDS
+// ============================================================
+function renderPoids() {
+  const p = db.profile;
+  if (!p) return;
+  const weights = db.weights || [];
+  const latest = weights.length ? weights[weights.length-1] : null;
+  const start = weights.length ? weights[0].poids : p.poids;
+
+  let html = '';
+
+  // Add weight form
+  html += `<div class="card">
+    <div class="card-title">Ajouter une mesure</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="w_date" value="${todayStr()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Poids (kg)</label>
+        <input class="form-input" type="number" id="w_poids" step="0.1" placeholder="${latest ? latest.poids : p.poids}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Masse grasse (%)</label>
+        <input class="form-input" type="number" id="w_mg" step="0.1" placeholder="ex: 18.5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Masse musculaire (%)</label>
+        <input class="form-input" type="number" id="w_mm" step="0.1" placeholder="ex: 42.0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Graisse viscérale (niveau)</label>
+      <input class="form-input" type="number" id="w_gv" step="1" placeholder="ex: 8">
+    </div>
+    <button class="btn btn-primary" onclick="saveWeight()">ENREGISTRER ✓</button>
+  </div>`;
+
+  // Current stats
+  if (latest) {
+    const perte = parseFloat((start - latest.poids).toFixed(1));
+    const imc = calcBMI(p, latest.poids).toFixed(1);
+    let ratio = null;
+    if (latest.mg && latest.mm) {
+      const mgKg = latest.poids * latest.mg / 100;
+      const mmKg = latest.poids * latest.mm / 100;
+      ratio = (mmKg / mgKg).toFixed(2);
+    }
+
+    html += `<div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Poids actuel</div>
+        <div class="stat-val">${latest.poids}<span class="stat-unit">kg</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Perte totale</div>
+        <div class="stat-val" style="color:${perte>0?'var(--accent3)':'var(--muted)'}">${perte>0?'-':''}${Math.abs(perte)}<span class="stat-unit">kg</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">IMC</div>
+        <div class="stat-val">${imc}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${imc<18.5?'Maigreur':imc<25?'Normal':imc<30?'Surpoids':'Obésité'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Objectif</div>
+        <div class="stat-val">${p.poidsObj}<span class="stat-unit">kg</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Reste: ${Math.max(0,(latest.poids-p.poidsObj).toFixed(1))}kg</div>
+      </div>
+    </div>`;
+
+    if (latest.mg && latest.mm) {
+      const mgKg = (latest.poids * latest.mg / 100).toFixed(1);
+      const mmKg = (latest.poids * latest.mm / 100).toFixed(1);
+      const ratioInfo = getRatioLabel(parseFloat(ratio));
+      html += `<div class="card">
+        <div class="card-title">Composition corporelle</div>
+        <div class="info-row"><span class="info-label">Masse grasse</span><span class="info-val" style="color:var(--accent2)">${latest.mg}% — ${mgKg}kg</span></div>
+        <div class="info-row"><span class="info-label">Masse musculaire</span><span class="info-val" style="color:var(--accent3)">${latest.mm}% — ${mmKg}kg</span></div>
+        <div class="info-row"><span class="info-label">Ratio Muscle/Gras</span><span class="info-val" style="color:${ratioInfo.color}">${ratio} — ${ratioInfo.label}</span></div>
+        <div class="ratio-bar" style="margin-top:8px">
+          <div class="ratio-fill" style="width:${Math.min(100, parseFloat(ratio)/2.5*100)}%"></div>
+          <div class="ratio-marker" style="left:${1.8/2.5*100}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px"><span>0</span><span>Athlétique 1.8</span><span>2.5+</span></div>
+      </div>`;
+    }
+  }
+
+  // Chart
+  if (weights.length > 1) {
+    html += `<div class="card">
+      <div class="card-title">Évolution du poids</div>
+      <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+    </div>`;
+  }
+
+  // History
+  const sorted = [...weights].sort((a,b) => b.date.localeCompare(a.date));
+  if (sorted.length) {
+    html += `<div class="card">
+      <div class="card-title">Historique</div>`;
+    sorted.slice(0,20).forEach((w, i) => {
+      const prev = sorted[i+1];
+      const delta = prev ? parseFloat((w.poids - prev.poids).toFixed(1)) : null;
+      html += `<div class="weight-entry">
+        <div>
+          <div class="weight-date">${new Date(w.date+'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric',month:'short'})}</div>
+          ${w.mg ? `<div style="font-size:11px;color:var(--muted)">MG: ${w.mg}% | MM: ${w.mm||'?'}%</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${delta !== null ? `<span style="font-size:12px;color:${delta<0?'var(--accent3)':delta>0?'var(--accent2)':'var(--muted)'}">${delta>0?'+':''}${delta}kg</span>` : ''}
+          <div class="weight-val">${w.poids}</div>
+          <button onclick="deleteWeight('${w.date}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">×</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  document.getElementById('poidsContent').innerHTML = html;
+
+  // Draw chart
+  if (weights.length > 1) {
+    const ctx = document.getElementById('weightChart');
+    if (ctx) {
+      const sorted2 = [...weights].sort((a,b) => a.date.localeCompare(b.date));
+      if (weightChart) weightChart.destroy();
+      weightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sorted2.map(w => new Date(w.date+'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric',month:'short'})),
+          datasets: [{
+            data: sorted2.map(w => w.poids),
+            borderColor: '#e8ff47',
+            backgroundColor: 'rgba(232,255,71,.08)',
+            pointBackgroundColor: '#e8ff47',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#6b6b8a', font: { size: 10 } }, grid: { color: '#2a2a3e' } },
+            y: { ticks: { color: '#6b6b8a' }, grid: { color: '#2a2a3e' } }
+          }
+        }
+      });
+    }
+  }
+}
+
+function saveWeight() {
+  const date = document.getElementById('w_date').value;
+  const poids = parseFloat(document.getElementById('w_poids').value);
+  const mg = parseFloat(document.getElementById('w_mg').value) || null;
+  const mm = parseFloat(document.getElementById('w_mm').value) || null;
+  const gv = parseInt(document.getElementById('w_gv').value) || null;
+  if (!poids) { showToast('⚠️ Entres ton poids'); return; }
+  // Remove existing entry for this date
+  db.weights = db.weights.filter(w => w.date !== date);
+  db.weights.push({ date, poids, mg, mm, gv });
+  db.weights.sort((a,b) => a.date.localeCompare(b.date));
+  // Update profile current weight
+  db.profile.poids = poids;
+  saveDB();
+  showToast('✓ Poids enregistré');
+  renderPoids();
+  renderDashboard();
+}
+
+function deleteWeight(date) {
+  db.weights = db.weights.filter(w => w.date !== date);
+  saveDB();
+  renderPoids();
+  renderDashboard();
+}
+
+// ============================================================
+// MUSCU PROGRAM
+// ============================================================
+const programmeBase = [
+  { seance:'A', exercice:'Développé couché barre', groupe:'Pecs', chargeBase:60, series:3, repsBase:8, rpe:7 },
+  { seance:'A', exercice:'Tirage horizontal', groupe:'Dos', chargeBase:57, series:3, repsBase:8, rpe:8 },
+  { seance:'A', exercice:'Tirage vertical', groupe:'Dos', chargeBase:57, series:3, repsBase:8, rpe:8 },
+  { seance:'A', exercice:'Pec deck', groupe:'Pecs', chargeBase:34, series:3, repsBase:12, rpe:7 },
+  { seance:'A', exercice:'Curl marteau', groupe:'Biceps', chargeBase:28, series:3, repsBase:12, rpe:8 },
+  { seance:'A', exercice:'Extension triceps corde', groupe:'Triceps', chargeBase:18, series:3, repsBase:12, rpe:8 },
+  { seance:'B', exercice:'Presse à cuisses', groupe:'Jambes', chargeBase:80, series:3, repsBase:12, rpe:7 },
+  { seance:'B', exercice:'Leg curl assis', groupe:'Ischio', chargeBase:36, series:3, repsBase:12, rpe:8 },
+  { seance:'B', exercice:'Leg curl inversé', groupe:'Jambes', chargeBase:36, series:3, repsBase:10, rpe:7 },
+  { seance:'B', exercice:'Tirage horizontal léger', groupe:'Dos', chargeBase:50, series:3, repsBase:10, rpe:7 },
+  { seance:'B', exercice:'Curl corde', groupe:'Biceps', chargeBase:30, series:3, repsBase:12, rpe:7 },
+  { seance:'B', exercice:'Dips assistés', groupe:'Pecs/Triceps', chargeBase:80, series:3, repsBase:10, rpe:7 },
+  { seance:'C', exercice:'Développé incliné haltères', groupe:'Pecs', chargeBase:36, series:3, repsBase:10, rpe:7 },
+  { seance:'C', exercice:'Rowing barre', groupe:'Dos', chargeBase:30, series:3, repsBase:10, rpe:8 },
+  { seance:'C', exercice:'Élévations latérales', groupe:'Épaules', chargeBase:10, series:3, repsBase:15, rpe:7 },
+  { seance:'C', exercice:'Pec deck', groupe:'Pecs', chargeBase:34, series:3, repsBase:12, rpe:7 },
+  { seance:'C', exercice:'Curl marteau', groupe:'Biceps', chargeBase:28, series:3, repsBase:12, rpe:7 },
+  { seance:'C', exercice:'Extension triceps corde', groupe:'Triceps', chargeBase:18, series:3, repsBase:12, rpe:7 },
+];
+
+function getExerciceForWeek(ex, week) {
+  const isDeload = week % 4 === 0;
+  const seriesMulti = isDeload ? 2 : 3;
+  const rpeMulti = isDeload ? -1 : 0;
+  const chargeIncrease = Math.floor((week - 1) / 4) * 1.25;
+  const repsIncrease = ((week - 1) % 3);
+  return {
+    ...ex,
+    charge: parseFloat((ex.chargeBase + chargeIncrease).toFixed(2)),
+    series: seriesMulti,
+    reps: ex.repsBase + repsIncrease,
+    rpe: Math.max(5, ex.rpe + rpeMulti),
+    isDeload
+  };
+}
+
+function renderMuscu() {
+  const p = db.profile;
+  if (!p) return;
+  const cycle = getCurrentCycle(p);
+  const seance = currentMuscu;
+
+  document.getElementById('muscuSub').textContent = `Cycle ${cycle} — Séance ${seance}`;
+
+  let html = '';
+
+  // Seance tabs
+  html += `<div class="seance-tabs">
+    ${['A','B','C'].map(s => `<div class="seance-tab ${seance===s?'active':''}" onclick="setSeance('${s}')">${s}</div>`).join('')}
+  </div>`;
+
+  if (getExerciceForWeek(programmeBase[0], cycle).isDeload) {
+    html += `<div class="card" style="border-color:var(--warn)"><div style="font-size:14px">⚡ <b>Semaine de décharge</b> — Moins de volume, même technique. Récupère bien.</div></div>`;
+  }
+
+  const exos = programmeBase.filter(e => e.seance === seance);
+  const dateKey = todayStr() + '_' + seance;
+  const sessionLog = db.exerciseLogs[dateKey] || {};
+
+  exos.forEach((ex, idx) => {
+    const planned = getExerciceForWeek(ex, cycle);
+    const done = sessionLog[idx];
+
+    html += `<div class="exercise-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="exercise-name">${ex.exercice}</div>
+          <div class="exercise-group">${ex.groupe}</div>
+        </div>
+        ${done ? `<span class="badge badge-green">✓ Fait</span>` : ''}
+      </div>
+      <div class="exercise-details">
+        <div class="ex-detail"><div class="ex-val">${planned.charge}kg</div><div class="ex-lbl">Charge</div></div>
+        <div class="ex-detail"><div class="ex-val">${planned.series}</div><div class="ex-lbl">Séries</div></div>
+        <div class="ex-detail"><div class="ex-val">${planned.reps}</div><div class="ex-lbl">Reps</div></div>
+        <div class="ex-detail"><div class="ex-val">RPE${planned.rpe}</div><div class="ex-lbl">Intensité</div></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <input class="form-input" style="flex:1;padding:10px;font-size:14px" type="number" step="0.5" placeholder="Charge réelle (kg)" id="ex_charge_${idx}" value="${done?.charge||''}">
+        <input class="form-input" style="flex:1;padding:10px;font-size:14px" type="number" placeholder="Reps réelles" id="ex_reps_${idx}" value="${done?.reps||''}">
+        <button onclick="logExercise(${idx}, ${JSON.stringify(planned).replace(/"/g,"'")})" style="background:var(--accent);border:none;border-radius:10px;padding:0 14px;cursor:pointer;font-size:18px">✓</button>
+      </div>
+    </div>`;
+  });
+
+  html += `<button class="btn btn-secondary" style="margin-top:8px" onclick="finishSession()">✅ SÉANCE TERMINÉE</button>`;
+
+  document.getElementById('muscuContent').innerHTML = html;
+}
+
+function setSeance(s) {
+  currentMuscu = s;
+  renderMuscu();
+}
+
+function logExercise(idx, planned) {
+  const charge = parseFloat(document.getElementById(`ex_charge_${idx}`).value) || planned.charge;
+  const reps = parseInt(document.getElementById(`ex_reps_${idx}`).value) || planned.reps;
+  const dateKey = todayStr() + '_' + currentMuscu;
+  if (!db.exerciseLogs[dateKey]) db.exerciseLogs[dateKey] = {};
+  db.exerciseLogs[dateKey][idx] = { charge, reps, done: true };
+  saveDB();
+  showToast('💪 Exercice enregistré');
+  renderMuscu();
+}
+
+function finishSession() {
+  // Mark today's log as muscu
+  if (!db.logs[todayStr()]) db.logs[todayStr()] = {};
+  db.logs[todayStr()].type = 'MUSC';
+  saveDB();
+  showToast('🔥 Séance complétée !');
+  renderMuscu();
+}
+
+// ============================================================
+// PARAMS
+// ============================================================
+function renderParams() {
+  const p = db.profile;
+  if (!p) return;
+  const tdee = calcTDEE(p);
+  const macros = calcMacros(p);
+
+  let html = `<div class="card">
+    <div class="card-title">Profil</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Prénom</label><input class="form-input" id="pr_nom" value="${p.nom||''}"></div>
+      <div class="form-group"><label class="form-label">Sexe</label>
+        <select class="form-input" id="pr_sexe"><option value="M" ${p.sexe==='M'?'selected':''}>Homme</option><option value="F" ${p.sexe==='F'?'selected':''}>Femme</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Âge</label><input class="form-input" type="number" id="pr_age" value="${p.age}"></div>
+      <div class="form-group"><label class="form-label">Taille (m)</label><input class="form-input" type="number" step="0.01" id="pr_taille" value="${p.taille}"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Objectifs</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Poids actuel (kg)</label><input class="form-input" type="number" step="0.1" id="pr_poids" value="${p.poids}"></div>
+      <div class="form-group"><label class="form-label">Objectif (kg)</label><input class="form-input" type="number" step="0.1" id="pr_obj" value="${p.poidsObj}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date début</label><input class="form-input" type="date" id="pr_deb" value="${p.dateDebut}"></div>
+      <div class="form-group"><label class="form-label">Date objectif</label><input class="form-input" type="date" id="pr_fin" value="${p.dateObj}"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Nutrition</div>
+    <div class="form-group">
+      <label class="form-label">Niveau d'activité</label>
+      <select class="form-input" id="pr_act">
+        ${[['sedentaire','Sédentaire'],['leger','Léger (1-3x/sem)'],['modere','Modéré (3-5x/sem)'],['actif','Actif (6-7x/sem)'],['treactif','Très actif']].map(([v,l])=>`<option value="${v}" ${p.activite===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Déficit (kcal/j)</label><input class="form-input" type="number" id="pr_def" value="${p.deficit||500}"></div>
+      <div class="form-group"><label class="form-label">Protéines (g) — vide=auto</label><input class="form-input" type="number" id="pr_prot" value="${p.prot||''}" placeholder="Auto"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Lipides (g) — vide=auto</label><input class="form-input" type="number" id="pr_lip" value="${p.lip||''}" placeholder="Auto"></div>
+    <div class="info-row"><span class="info-label">TDEE calculé</span><span class="info-val">${tdee} kcal</span></div>
+    <div class="info-row"><span class="info-label">Cible</span><span class="info-val" style="color:var(--accent)">${macros.kcal} kcal</span></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveParams()">SAUVEGARDER ✓</button>
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="card-title">Lexique — Ratio Muscle/Gras</div>
+    <table class="lexique-table">
+      <tr><th>Ratio</th><th>Niveau</th></tr>
+      ${[['< 1.2','Excès de gras'],['1.2–1.4','Normal (soft)'],['1.4–1.6','Sportif occasionnel'],['1.6–1.8','Athlétique'],['1.8–2.2','Sec & tracé'],['> 2.2','Cover / Compétiteur']].map(([r,l])=>`<tr><td>${r}</td><td>${l}</td></tr>`).join('')}
+    </table>
+  </div>
+
+  <div style="height:12px"></div>
+  <button class="btn btn-danger" onclick="resetApp()">RÉINITIALISER L'APP</button>`;
+
+  document.getElementById('paramsContent').innerHTML = html;
+}
+
+function saveParams() {
+  const p = db.profile;
+  p.nom = document.getElementById('pr_nom').value;
+  p.sexe = document.getElementById('pr_sexe').value;
+  p.age = parseInt(document.getElementById('pr_age').value);
+  p.taille = parseFloat(document.getElementById('pr_taille').value);
+  p.poids = parseFloat(document.getElementById('pr_poids').value);
+  p.poidsObj = parseFloat(document.getElementById('pr_obj').value);
+  p.dateDebut = document.getElementById('pr_deb').value;
+  p.dateObj = document.getElementById('pr_fin').value;
+  p.activite = document.getElementById('pr_act').value;
+  p.deficit = parseInt(document.getElementById('pr_def').value) || 500;
+  p.prot = parseInt(document.getElementById('pr_prot').value) || null;
+  p.lip = parseInt(document.getElementById('pr_lip').value) || null;
+  saveDB();
+  showToast('✓ Profil mis à jour');
+  renderDashboard();
+  renderNutrition();
+  renderParams();
+}
+
+function resetApp() {
+  if (!confirm('Tout effacer ? Cette action est irréversible.')) return;
+  localStorage.removeItem('cuttracker');
+  location.reload();
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadDB();
+if (db.profile) {
+  startApp();
+} else {
+  renderOnboard();
+}
+</script>
+</body>
+</html>
